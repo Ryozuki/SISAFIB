@@ -204,7 +204,6 @@ int compile_line(char *line, uint16_t *pOutOperation)
 			return PARSE_ERROR;
 
 		const int16_t reg = get_register_num(token);
-		// TODO: Make a system to have input and output?
 
 		token = strtok(NULL, TOKEN_SPLIT);
 
