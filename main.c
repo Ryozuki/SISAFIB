@@ -26,10 +26,16 @@
 #define PARSE_ERROR 0
 #define PARSE_SUCCESS 1
 
-// TODO: remove repeated code
-
 static size_t current_line = 1;
 static unsigned int PC = 0;
+
+/*
+ * TODO:
+ * - Add labels support
+ * - Add Comments Support
+ * - More error checking and warnings.
+ * - Add macro MOVE which uses both MOVI AND MOVHI only if needed.
+ */
 
 uint16_t get_fff(const char* token) {
 	if(!strcmp(token, "ADD"))
@@ -58,6 +64,7 @@ uint16_t get_fff(const char* token) {
 		return FFF_CMPEQ;
 	if(!strcmp(token, "AND"))
 		return FFF_AND;
+	return 0;
 }
 
 void print_error(const char *format, ...)
@@ -87,7 +94,7 @@ int is_valid_register(const char *token)
 	return 1;
 }
 
-int get_register(char **token, size_t current_line)
+int get_register(char **token)
 {
 	*token = strtok(NULL, TOKEN_SPLIT);
 
@@ -112,17 +119,17 @@ int16_t get_register_num(char *token)
 
 int get_3reg(char **token, int *reg_d, int *reg_a, int *reg_b)
 {
-	if (!get_register(token, current_line))
+	if (!get_register(token))
 		return 0;
 
 	*reg_d = get_register_num(*token);
 
-	if (!get_register(token, current_line))
+	if (!get_register(token))
 		return 0;
 
 	*reg_a = get_register_num(*token);
 
-	if (!get_register(token, current_line))
+	if (!get_register(token))
 		return 0;
 
 	*reg_b = get_register_num(*token);
@@ -131,12 +138,12 @@ int get_3reg(char **token, int *reg_d, int *reg_a, int *reg_b)
 
 int get_2reg(char **token, int *reg_d, int *reg_a)
 {
-	if (!get_register(token, current_line))
+	if (!get_register(token))
 		return 0;
 
 	*reg_d = get_register_num(*token);
 
-	if (!get_register(token, current_line))
+	if (!get_register(token))
 		return 0;
 
 	*reg_a = get_register_num(*token);
@@ -186,15 +193,14 @@ uint16_t format_n6(int16_t opcode, int16_t areg, int16_t dbreg, int16_t value)
 	return (uint16_t) ((opcode << 12) | (areg << 9) | (dbreg << 6) | (value & 0x3F));
 }
 
-int compile_line(char *line,
-				 uint16_t *pOutOperation)
+int compile_line(char *line, uint16_t *pOutOperation)
 {
 	char *token;
 	token = strtok(line, TOKEN_SPLIT);
 
 	if (strcmp(token, "IN") == 0)
 	{
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 
 		const int16_t reg = get_register_num(token);
@@ -222,7 +228,7 @@ int compile_line(char *line,
 		}
 		const int8_t addr = (int8_t) strtol(token, NULL, 10);
 
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 
 		const int16_t reg = get_register_num(token);
@@ -231,7 +237,7 @@ int compile_line(char *line,
 	}
 	else if (!strcmp(token, "MOVI"))
 	{
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 
 		const int reg = get_register_num(token);
@@ -256,7 +262,7 @@ int compile_line(char *line,
 	}
 	else if (!strcmp(token, "MOVHI"))
 	{
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 
 		const int reg = get_register_num(token);
@@ -283,7 +289,7 @@ int compile_line(char *line,
 	else if (!strcmp(token, "BZ") || !strcmp(token, "BNZ"))
 	{
 		const char* opname = token;
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 
 		const int reg = get_register_num(token);
@@ -330,7 +336,7 @@ int compile_line(char *line,
 	else if (!strcmp(token, "LD") || !strcmp(token, "LDB"))
 	{
 		const char* name = token;
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 		const int regd = get_register_num(token);
 
@@ -384,7 +390,7 @@ int compile_line(char *line,
 		int rega = strtol(&pEnd[2], &pEnd, 10);
 		// TODO: ADD check for this register integer 0 <= x < 8
 
-		if (!get_register(&token, current_line))
+		if (!get_register(&token))
 			return PARSE_ERROR;
 		const int regd = get_register_num(token);
 
