@@ -3,4 +3,4 @@ project(SISAFIB C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(SISAFIB main.c)
+add_executable(compiler main.c)
