@@ -100,7 +100,7 @@ int get_register(char **token)
 
 	if (*token == NULL)
 	{
-		print_error("found 'IN' token without a register.\n");
+		print_error("expected a register.\n");
 		return 0;
 	}
 
