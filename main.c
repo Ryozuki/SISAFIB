@@ -8,20 +8,20 @@
 #define MAX_PROGRAM_SIZE 5000
 #define MAX_LINE_SIZE 256
 
-#define FFF_AND 0
-#define FFF_OR 1
-#define FFF_XOR 2
-#define FFF_NOT 3
-#define FFF_ADD 4
-#define FFF_SUB 5
-#define FFF_SHA 6
-#define FFF_SHL 7
+#define FFF_AND 0u
+#define FFF_OR 1u
+#define FFF_XOR 2u
+#define FFF_NOT 3u
+#define FFF_ADD 4u
+#define FFF_SUB 5u
+#define FFF_SHA 6u
+#define FFF_SHL 7u
 
-#define FFF_CMPLT 0
-#define FFF_CMPLE 1
-#define FFF_CMPEQ 3
-#define FFF_CMPLTU 4
-#define FFF_CMPLEU 5
+#define FFF_CMPLT 0u
+#define FFF_CMPLE 1u
+#define FFF_CMPEQ 3u
+#define FFF_CMPLTU 4u
+#define FFF_CMPLEU 5u
 
 #define PARSE_ERROR 0
 #define PARSE_SUCCESS 1
@@ -30,6 +30,35 @@
 
 static size_t current_line = 1;
 static unsigned int PC = 0;
+
+uint16_t get_fff(const char* token) {
+	if(!strcmp(token, "ADD"))
+		return FFF_ADD;
+	if(!strcmp(token, "SUB"))
+		return FFF_SUB;
+	if(!strcmp(token, "OR"))
+		return FFF_OR;
+	if(!strcmp(token, "XOR"))
+		return FFF_XOR;
+	if(!strcmp(token, "NOT"))
+		return FFF_NOT;
+	if(!strcmp(token, "SHA"))
+		return FFF_SHA;
+	if(!strcmp(token, "SHL"))
+		return FFF_SHL;
+	if(!strcmp(token, "CMPLT"))
+		return FFF_CMPLT;
+	if(!strcmp(token, "CMPLTU"))
+		return FFF_CMPLTU;
+	if(!strcmp(token, "CMPLE"))
+		return FFF_CMPLE;
+	if(!strcmp(token, "CMPLEU"))
+		return FFF_CMPLEU;
+	if(!strcmp(token, "CMPEQ"))
+		return FFF_CMPEQ;
+	if(!strcmp(token, "AND"))
+		return FFF_AND;
+}
 
 void print_error(const char *format, ...)
 {
@@ -147,9 +176,9 @@ uint16_t format_n8(int16_t opcode, int16_t reg, int8_t n8, int16_t bool)
 }
 
 
-uint16_t format_r3(int16_t dreg, int16_t areg, int16_t breg, int16_t f, int16_t is_boolean)
+uint16_t format_r3(uint16_t dreg, uint16_t areg, uint16_t breg, uint16_t f, uint16_t is_boolean)
 {
-	return (uint16_t) ((is_boolean << 12) | (areg << 9) | (breg << 6) | (dreg << 3) | f);
+	return (uint16_t) ((is_boolean << 12) | (areg << 9) | (breg << 6) | (dreg << 3) | (f & 0x7));
 }
 
 uint16_t format_n6(int16_t opcode, int16_t areg, int16_t dbreg, int16_t value)
@@ -275,102 +304,32 @@ int compile_line(char *line,
 						  val);
 
 		int8_t value = (int8_t) val;
-		uint16_t formatted = format_n8(8, reg, value, (!strcmp(token, "BZ")) ? 0 : 1);
+		uint16_t formatted = format_n8(8, reg, value, (!strcmp(opname, "BZ")) ? 0 : 1);
 		*pOutOperation = formatted;
 	}
-	else if (!strcmp(token, "ADD"))
+	else if (!strcmp(token, "ADD") || !strcmp(token, "SUB") || !strcmp(token, "AND")
+	|| !strcmp(token, "OR") || !strcmp(token, "XOR") || !strcmp(token, "SHA")
+	|| !strcmp(token, "SHL") || !strcmp(token, "CMPLT") || !strcmp(token, "CMPLE") || !strcmp(token, "CMPEQ")
+	|| !strcmp(token, "CMPLTU") || !strcmp(token, "CMPLEU"))
 	{
 		int d, a, b;
+		int is_bool = !strcmp(token, "CMPLT") || !strcmp(token, "CMPLE") || !strcmp(token, "CMPEQ")
+					  || !strcmp(token, "CMPLTU") || !strcmp(token, "CMPLEU");
+		uint16_t f = get_fff(token);
 		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_ADD, 0);
+		uint16_t formatted = format_r3(d, a, b, f, is_bool);
 		*pOutOperation = formatted;
 	}
-	else if (!strcmp(token, "SUB"))
+	else if(!strcmp(token, "NOT"))
 	{
 		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_SUB, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "AND"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_AND, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "OR"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_OR, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "XOR"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_XOR, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "NOT"))
-	{
-		int d, a;
 		get_2reg(&token, &d, &a);
-		uint16_t formatted = format_r3(d, a, 0, FFF_NOT, 0);
+		uint16_t formatted = format_r3(d, a, 0, get_fff(token), 0);
 		*pOutOperation = formatted;
 	}
-	else if (!strcmp(token, "SHA"))
+	else if (!strcmp(token, "LD") || !strcmp(token, "LDB"))
 	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_SHA, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "SHL"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_SHL, 0);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "CMPLT"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_CMPLT, 1);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "CMPLE"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_CMPLE, 1);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "CMPEQ"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_CMPEQ, 1);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "CMPLTU"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_CMPLTU, 1);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "CMPLEU"))
-	{
-		int d, a, b;
-		get_3reg(&token, &d, &a, &b);
-		uint16_t formatted = format_r3(d, a, b, FFF_CMPLEU, 1);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "LD"))
-	{
+		const char* name = token;
 		if (!get_register(&token, current_line))
 			return PARSE_ERROR;
 		const int regd = get_register_num(token);
@@ -379,7 +338,7 @@ int compile_line(char *line,
 
 		if (token == NULL)
 		{
-			print_error("found LD mnemonic without a Address(Reg)\n");
+			print_error("found %s mnemonic without a Address(Reg)\n", name);
 			return PARSE_ERROR;
 		}
 		char *pEnd;
@@ -396,46 +355,17 @@ int compile_line(char *line,
 		}
 
 		int rega = strtol(&pEnd[2], &pEnd, 10);
-		uint16_t formatted = format_n6(3, rega, regd, value);
+		uint16_t formatted = format_n6((!strcmp(name, "LD")) ? 3 : 5, rega, regd, value);
 		*pOutOperation = formatted;
 	}
-	else if (!strcmp(token, "LDB"))
+	else if (!strcmp(token, "ST") || !strcmp(token, "STB"))
 	{
-		if (!get_register(&token, current_line))
-			return PARSE_ERROR;
-		const int regd = get_register_num(token);
-
+		const char* name = token;
 		token = strtok(NULL, TOKEN_SPLIT);
 
 		if (token == NULL)
 		{
-			print_error("found LDB mnemonic without a Address(Reg)\n");
-			return PARSE_ERROR;
-		}
-		char *pEnd;
-		int value = strtol(token, &pEnd, 10);
-
-		if(*(pEnd) != '(') {
-			print_error("missing (\n");
-			return PARSE_ERROR;
-		}
-
-		if(*(pEnd + 1) != 'R') {
-			print_error("missing register after address\n");
-			return PARSE_ERROR;
-		}
-
-		int rega = strtol(&pEnd[2], &pEnd, 10);
-		uint16_t formatted = format_n6(5, rega, regd, value);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "ST"))
-	{
-		token = strtok(NULL, TOKEN_SPLIT);
-
-		if (token == NULL)
-		{
-			print_error("found ST mnemonic without a Address(Reg)\n");
+			print_error("found %s mnemonic without a Address(Reg)\n", name);
 			return PARSE_ERROR;
 		}
 		char *pEnd;
@@ -458,46 +388,13 @@ int compile_line(char *line,
 			return PARSE_ERROR;
 		const int regd = get_register_num(token);
 
-		uint16_t formatted = format_n6(4, rega, regd, value);
-		*pOutOperation = formatted;
-	}
-	else if (!strcmp(token, "STB"))
-	{
-		token = strtok(NULL, TOKEN_SPLIT);
-
-		if (token == NULL)
-		{
-			print_error("found STB mnemonic without a Address(Reg)\n");
-			return PARSE_ERROR;
-		}
-		char *pEnd;
-		int value = strtol(token, &pEnd, 10);
-
-		if(*(pEnd) != '(') {
-			print_error("missing (\n");
-			return PARSE_ERROR;
-		}
-
-		if(*(pEnd + 1) != 'R') {
-			print_error("missing register after address\n");
-			return PARSE_ERROR;
-		}
-
-		int rega = strtol(&pEnd[2], &pEnd, 10);
-		// TODO: ADD check for this register integer 0 <= x < 8
-
-		if (!get_register(&token, current_line))
-			return PARSE_ERROR;
-		const int regd = get_register_num(token);
-
-		uint16_t formatted = format_n6(6, rega, regd, value);
+		uint16_t formatted = format_n6((!strcmp(name, "ST")) ? 4 : 6, rega, regd, value);
 		*pOutOperation = formatted;
 	}
 	else if (!strcmp(token, "JALR"))
 	{
 		int d, a;
 		get_2reg(&token, &d, &a);
-
 		uint16_t formatted = format_n6(7, a, d, 0);
 		*pOutOperation = formatted;
 	}
